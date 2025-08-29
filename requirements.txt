@@ -13,3 +13,5 @@ requests==2.32.3
 onnx==1.16.1
 tf2onnx==1.16.0
 skl2onnx==1.16.0
+ipykernel
+kagglehub
