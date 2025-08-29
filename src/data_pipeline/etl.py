@@ -1,11 +1,17 @@
 # src/data_pipeline/etl.py
 
+import os
+import kagglehub
 import pandas as pd
 import logging
 from pathlib import Path
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - [%(levelname)s] - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
 
 def run_etl(raw_data_path: str, processed_data_path: str):
     """
@@ -15,34 +21,43 @@ def run_etl(raw_data_path: str, processed_data_path: str):
         raw_data_path (str): Path to the raw events.csv file.
         processed_data_path (str): Path to save the processed Parquet file.
     """
-    logging.info("Starting ETL process...")
+    logging.info("ETL PROCESS STARTED")
 
     # Define paths
     raw_path = Path(raw_data_path)
     processed_path = Path(processed_data_path)
     processed_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # --- EXTRACT ---
-    logging.info(f"Extracting data from {raw_path}...")
+    # EXTRACT
+    logging.info(f"[EXTRACT] Reading data from: {raw_path}")
     try:
         events_df = pd.read_csv(raw_path)
     except FileNotFoundError:
-        logging.error(f"Raw data file not found at {raw_path}. Please download the dataset.")
+        logging.error(f"File not found at {raw_path}. Please download the dataset.")
         return
 
-    logging.info(f"Initial dataset shape: {events_df.shape}")
+    logging.info(f"[EXTRACT] Dataset loaded. Shape: {events_df.shape}, Columns: {list(events_df.columns)}")
 
-    # --- TRANSFORM ---
-    logging.info("Transforming data...")
+    # TRANSFORM
+    logging.info("[TRANSFORM] Starting data transformation...")
 
-    # 1. Rename columns for clarity
+    # 1. Rename columns
+    logging.info("[TRANSFORM] Renaming columns for clarity...")
     events_df.rename(columns={'visitorid': 'user_id', 'itemid': 'item_id'}, inplace=True)
 
-    # 2. Convert timestamp to datetime
+    # 2. Convert timestamp
+    logging.info("[TRANSFORM] Converting 'timestamp' to datetime...")
     events_df['timestamp_dt'] = pd.to_datetime(events_df['timestamp'], unit='ms')
 
-    # 3. Create a confidence score based on event type
-    # This quantifies user intent: transaction > addtocart > view
+    # 3. Drop mostly-null column
+    logging.info("[TRANSFORM] Dropping 'transactionid' column cause mostly null...")
+    if 'transactionid' in events_df.columns:
+        null_ratio = events_df['transactionid'].isna().mean()
+        logging.info(f"[TRANSFORM] Dropping 'transactionid' (null ratio: {null_ratio:.2%})...")
+        events_df.drop(columns=['transactionid'], inplace=True)
+
+    # 4. Add event strength
+    logging.info("[TRANSFORM] Adding 'event_strength' feature...")
     event_strength = {
         'view': 1.0,
         'addtocart': 2.0,
@@ -50,45 +65,40 @@ def run_etl(raw_data_path: str, processed_data_path: str):
     }
     events_df['event_strength'] = events_df['event'].map(event_strength)
 
-    # 4. Filter out noise: users and items with few interactions
-    # This is a critical step for collaborative filtering models
+    # 5. Filter users/items with few interactions
+    logging.info("[TRANSFORM] Filtering users and items with fewer than 5 interactions...")
     min_user_interactions = 5
     min_item_interactions = 5
 
     while True:
-        # Count interactions for users and items
         user_counts = events_df['user_id'].value_counts()
         item_counts = events_df['item_id'].value_counts()
 
-        # Identify users and items to keep
         users_to_keep = user_counts[user_counts >= min_user_interactions].index
         items_to_keep = item_counts[item_counts >= min_item_interactions].index
 
-        # Store original shape for comparison
         original_shape = events_df.shape
-
-        # Filter the DataFrame
         events_df = events_df[events_df['user_id'].isin(users_to_keep)]
         events_df = events_df[events_df['item_id'].isin(items_to_keep)]
-        
-        logging.info(f"Filtering... Shape changed from {original_shape} to {events_df.shape}")
 
-        # If no more rows are being removed, break the loop
         if original_shape == events_df.shape:
             break
 
-    logging.info(f"Filtered dataset shape: {events_df.shape}")
-    logging.info(f"Number of unique users: {events_df['user_id'].nunique()}")
-    logging.info(f"Number of unique items: {events_df['item_id'].nunique()}")
+    logging.info(f"[TRANSFORM] Final dataset shape: {events_df.shape}")
+    logging.info(f"[TRANSFORM] Unique users: {events_df['user_id'].nunique()}")
+    logging.info(f"[TRANSFORM] Unique items: {events_df['item_id'].nunique()}")
 
-    # --- LOAD ---
-    logging.info(f"Loading processed data to {processed_path}...")
+    # LOAD
+    logging.info(f"[LOAD] Saving processed data to {processed_path}...")
     events_df.to_parquet(processed_path, index=False)
-    logging.info("ETL process completed successfully.")
+
+    logging.info("ETL PROCESS COMPLETED SUCCESSFULLY")
 
 if __name__ == '__main__':
-    # This allows the script to be run directly
-    # In a real pipeline, these paths would be configured or passed as arguments
-    RAW_DATA_PATH = 'data/raw/events.csv'
+    # Download dataset from kaggle
+    path = kagglehub.dataset_download("retailrocket/ecommerce-dataset")
+    print("Path to dataset files:", path)
+
+    RAW_DATA_PATH = os.path.join(path, 'events.csv')
     PROCESSED_DATA_PATH = 'data/processed/processed_events.parquet'
     run_etl(RAW_DATA_PATH, PROCESSED_DATA_PATH)
