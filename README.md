@@ -74,7 +74,7 @@ Docker is essential for containerizing the application for deployment. Download 
 
 ## Datasets 
 
-We need a datasets that have a feature we need for training model to our purpose. So datasets ecommerce like ratings is not enough. We also need more detail about customer behavior, like product view, add to chart and purchase. so we will use [Retailrocket recommender systems dataset](Rhttps://www.kaggle.com/datasets/retailrocket/ecommerce-dataset). In kaggle datacard, there is three dataset, but for this project we will just use `events.csv` which have feature like `timestampt`, `visitor id` (user) and `event` (add to `chart`, `view` and `transaction`). There is no label in this dataset because the main purpose is to find a pattern and anomaly at the features it self. 
+We need a datasets that have an information of user interction with our product to calculate the interest rate to its poruct. So datasets ecommerce like ratings is not enough. We also need more detail about customer behavior, like product view, add to chart and purchase. so we will use [Retailrocket recommender systems dataset](Rhttps://www.kaggle.com/datasets/retailrocket/ecommerce-dataset). In kaggle datacard, there is three dataset, but for this project we will just use `events.csv` which have feature like `timestampt`, `visitor id` (user) and `event` (add to `chart`, `view` and `transaction`). There is no label in this dataset because the main purpose is to find a pattern and anomaly at the features it self. 
 
 |File Name|Column Name|Data Type|Description|
 |---|---|---|---|
@@ -84,5 +84,8 @@ We need a datasets that have a feature we need for training model to our purpose
 |`events.csv`|`itemid`|int64|Hashed ID of the product/item.|
 |`events.csv`|`transactionid`|float64|ID of the transaction (only present for 'transaction' events).|
 
-## 
+## [ETL Data Pipeline](src/data_pipeline/etl.py)
+
+ETL(Extraxt, Transform, and Load) pipeline will extract data from source, transform like cleaning and feature engeneering, and load processed data to database.
+
 
