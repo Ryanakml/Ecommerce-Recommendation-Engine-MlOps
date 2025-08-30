@@ -41,7 +41,7 @@ source venv/bin/activate
 .\venv\Scripts\activate
 ```
 
-2. Install the required packages
+2. Install the required [packages](requirements.txt)
 
 ``` bash
 pip install -r requirements.txt
@@ -72,9 +72,9 @@ Docker is essential for containerizing the application for deployment. Download 
 └── README.md                  # Project documentation and setup instructions
 ```
 
-## Datasets 
+## Datasets
 
-We need a datasets that have an information of user interction with our product to calculate the interest rate to its poruct. So datasets ecommerce like ratings is not enough. We also need more detail about customer behavior, like product view, add to chart and purchase. so we will use [Retailrocket recommender systems dataset](Rhttps://www.kaggle.com/datasets/retailrocket/ecommerce-dataset). In kaggle datacard, there is three dataset, but for this project we will just use `events.csv` which have feature like `timestampt`, `visitor id` (user) and `event` (add to `chart`, `view` and `transaction`). There is no label in this dataset because the main purpose is to find a pattern and anomaly at the features it self. 
+We need a datasets that have an information of user interction with our product to calculate the interest rate to its poruct. So datasets ecommerce like ratings is not enough. We also need more detail about customer behavior, like product view, add to chart and purchase. so we will use [Retailrocket recommender systems dataset](https://www.kaggle.com/datasets/retailrocket/ecommerce-dataset). In kaggle datacard, there is three dataset, but for this project we will just use `events.csv` which have feature like `timestampt`, `visitor id` (user) and `event` (add to `chart`, `view` and `transaction`). There is no label in this dataset because the main purpose is to find a pattern and anomaly at the features it self. 
 
 |File Name|Column Name|Data Type|Description|
 |---|---|---|---|
@@ -86,6 +86,18 @@ We need a datasets that have an information of user interction with our product 
 
 ## [ETL Data Pipeline](src/data_pipeline/etl.py)
 
-ETL(Extraxt, Transform, and Load) pipeline will extract data from source, transform like cleaning and feature engeneering, and load processed data to database.
+ETL(Extraxt, Transform, and Load) pipeline will extract data from source, transform like cleaning and feature engeneering, and load processed data to database. The script is contain several key transformations 
+- it converts the Unix timestamp, creates a numerical `event_strength` to represent the implicit feedback, and iteratively filters out sparse users and items. 
+- This final step is crucial for the performance of many recommendation algorithms but must be done with awareness of the potential biases it introduces. 
+- The cleaned data is then saved in the efficient Parquet format, ready for the next stage.
 
+
+To run this script, you just need to run :
+```bash
+python src/data_pipeline/etl.py
+```
+
+## Feature Store
+
+Using sqlite for this case, will make data more secure and efficient to use and store. The [`feature_pipeline.py`](src/data_pipeline/feature_pipeline.py)
 
